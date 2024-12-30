@@ -1,0 +1,8 @@
+POST http://127.0.0.1:8080/products/100/reviews
+Content-Type: application/json
+
+{
+  "sku": 100,
+  "comment": "Отлично",
+  "user_id": "35fe1358-a03a-4bba-b2aa-b0b1c49264d2"
+}
