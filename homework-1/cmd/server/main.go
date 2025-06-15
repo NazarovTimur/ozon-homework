@@ -25,4 +25,5 @@ func main() {
 	loggedMux := middleware.LoggingMiddleware(http.DefaultServeMux)
 	fmt.Println("Сервер запущен на http://localhost:8082")
 	http.ListenAndServe(":8082", loggedMux)
+
 }
