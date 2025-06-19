@@ -1,21 +1,22 @@
-package cart
+package repository
 
 import (
+	"errors"
 	"sync"
 )
 
-type CartService struct {
+type Cart struct {
 	mu    sync.RWMutex
 	carts map[int64]map[uint32]uint16
 }
 
-func New() *CartService {
-	return &CartService{
+func New() *Cart {
+	return &Cart{
 		carts: make(map[int64]map[uint32]uint16),
 	}
 }
 
-func (cs *CartService) Add(userID int64, sku uint32, count uint16) (total uint16, existed bool) {
+func (cs *Cart) AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
@@ -30,7 +31,7 @@ func (cs *CartService) Add(userID int64, sku uint32, count uint16) (total uint16
 	return total, existed
 }
 
-func (cs *CartService) Remove(userID int64, sku uint32) {
+func (cs *Cart) RemoveCart(userID int64, sku uint32) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
@@ -39,17 +40,23 @@ func (cs *CartService) Remove(userID int64, sku uint32) {
 	}
 }
 
-func (cs *CartService) Clear(userID int64) {
+func (cs *Cart) ClearCart(userID int64) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
 	delete(cs.carts, userID)
 }
 
-func (cs *CartService) Get(userID int64) (map[uint32]uint16, bool) {
+func (cs *Cart) GetCart(userID int64) (map[uint32]uint16, error) {
 	cs.mu.RLock()
 	defer cs.mu.RUnlock()
 
-	cart, ok := cs.carts[userID]
-	return cart, ok
+	if cart, ok := cs.carts[userID]; ok {
+		result := make(map[uint32]uint16, len(cart))
+		for k, v := range cart {
+			result[k] = v
+		}
+		return result, nil
+	}
+	return nil, errors.New("user not found")
 }

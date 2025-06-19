@@ -4,20 +4,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/go-playground/validator/v10"
-	"homework-1/internal/app/cart"
 	"homework-1/internal/app/product"
-	"homework-1/internal/pkg/model"
+	"homework-1/internal/app/server"
+	"homework-1/internal/pkg/response"
 	"io"
 	"net/http"
 	"strconv"
 )
 
 type Handler struct {
-	cartService    *cart.CartService
+	cartService    *server.Server
 	productService *product.ProductService
 }
 
-func New(cartService *cart.CartService, productService *product.ProductService) *Handler {
+func New(cartService *server.Server, productService *product.ProductService) *Handler {
 	return &Handler{
 		cartService:    cartService,
 		productService: productService,
@@ -31,10 +31,6 @@ type CreateReviewRequest struct {
 func parseIDFromPath(r *http.Request, key string) (int64, error) {
 	idStr := r.PathValue(key)
 	return strconv.ParseInt(idStr, 10, 64)
-}
-func (h *Handler) isCartEmpty(userId int64) bool {
-	userCart, ok := h.cartService.Get(userId)
-	return !ok || len(userCart) == 0
 }
 
 func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
@@ -75,19 +71,13 @@ func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 	}
 	err = validate.Struct(createRequest)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid input", "details": err.Error()})
-		return
-	}
-	_, err = h.productService.ValidateProduct(uint32(sku))
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusPreconditionFailed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid sku"})
+		response.WriteError(w, http.StatusPreconditionFailed, "invalid sku")
 		return
 	}
 	total, existed := h.cartService.Add(userId, uint32(sku), createRequest.Count)
+	if total == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+	}
 
 	if !existed {
 		fmt.Fprintf(w, "must add %d item", total)
@@ -98,7 +88,7 @@ func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) DeleteItemFromCart(w http.ResponseWriter, r *http.Request) {
 	userId, err := parseIDFromPath(r, "user_id")
-	if err != nil || userId < 1 || h.isCartEmpty(userId) {
+	if err != nil || userId < 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -111,9 +101,7 @@ func (h *Handler) DeleteItemFromCart(w http.ResponseWriter, r *http.Request) {
 
 	_, err = h.productService.ValidateProduct(uint32(sku))
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusPreconditionFailed)
-		json.NewEncoder(w).Encode(map[string]string{"error": "invalid sku"})
+		response.WriteError(w, http.StatusPreconditionFailed, "invalid sku")
 		return
 	}
 	h.cartService.Remove(userId, uint32(sku))
@@ -122,7 +110,7 @@ func (h *Handler) DeleteItemFromCart(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) ClearCart(w http.ResponseWriter, r *http.Request) {
 	userId, err := parseIDFromPath(r, "user_id")
-	if err != nil || userId < 1 || h.isCartEmpty(userId) {
+	if err != nil || userId < 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -136,26 +124,10 @@ func (h *Handler) GetCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	var totalPrice uint32
-	var cartItems []model.CartItem
-
-	userCart, ok := h.cartService.Get(userId)
-	if !ok || len(userCart) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+	respon, err := h.cartService.Get(userId)
+	if err != nil {
+		response.WriteError(w, http.StatusBadRequest, err.Error())
 	}
-	for sku, count := range userCart {
-		productData, err := h.productService.ValidateProduct(sku)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusPreconditionFailed)
-			json.NewEncoder(w).Encode(map[string]string{"error": "invalid sku"})
-			return
-		}
-		totalPrice += uint32(count) * productData.Price
-		cartItems = append(cartItems, model.CartItem{Name: productData.Name, SkuID: int64(sku), Count: count, Price: productData.Price})
-	}
-	response := model.CartResponse{Items: cartItems, TotalPrice: totalPrice}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(respon)
 }

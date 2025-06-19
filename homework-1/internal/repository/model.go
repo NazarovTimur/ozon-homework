@@ -1,4 +1,4 @@
-package product
+package repository
 
 type ProductRequest struct {
 	Token      string `json:"token"`
