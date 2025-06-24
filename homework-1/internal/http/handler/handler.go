@@ -14,10 +14,10 @@ import (
 
 type Handler struct {
 	cartService    *server.Server
-	productService *product.ProductService
+	productService product.ProductValidator
 }
 
-func New(cartService *server.Server, productService *product.ProductService) *Handler {
+func New(cartService *server.Server, productService product.ProductValidator) *Handler {
 	return &Handler{
 		cartService:    cartService,
 		productService: productService,
@@ -130,4 +130,13 @@ func (h *Handler) GetCart(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(respon)
+}
+
+func (h *Handler) InitRoutes() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("DELETE /user/{user_id}/cart/{sku_id}", h.DeleteItemFromCart)
+	mux.HandleFunc("GET /user/{user_id}/cart", h.GetCart)
+
+	return mux
 }

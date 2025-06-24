@@ -10,6 +10,10 @@ import (
 	"net/http"
 )
 
+type ProductValidator interface {
+	ValidateProduct(sku uint32) (*repository.ProductResponse, error)
+}
+
 type ProductService struct {
 	client *retry.RetryClient
 	url    string

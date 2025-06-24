@@ -7,11 +7,11 @@ import (
 )
 
 type Server struct {
-	repo           *repository.Cart
-	productService *product.ProductService
+	repo           repository.CartRepository
+	productService product.ProductValidator
 }
 
-func New(repo *repository.Cart, productService *product.ProductService) *Server {
+func New(repo repository.CartRepository, productService product.ProductValidator) *Server {
 	return &Server{
 		repo:           repo,
 		productService: productService,

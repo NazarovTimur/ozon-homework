@@ -5,6 +5,13 @@ import (
 	"sync"
 )
 
+type CartRepository interface {
+	AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool)
+	RemoveCart(userID int64, sku uint32)
+	ClearCart(userID int64)
+	GetCart(userID int64) (map[uint32]uint16, error)
+}
+
 type Cart struct {
 	mu    sync.RWMutex
 	carts map[int64]map[uint32]uint16
@@ -58,5 +65,5 @@ func (cs *Cart) GetCart(userID int64) (map[uint32]uint16, error) {
 		}
 		return result, nil
 	}
-	return nil, errors.New("user not found")
+	return map[uint32]uint16{}, errors.New("user not found")
 }
