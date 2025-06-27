@@ -1,13 +1,21 @@
 package repository
 
 import (
-	"errors"
+	"homework-1/internal/pkg/errorx"
+	"homework-1/internal/pkg/model"
 	"sync"
 )
 
+type CartRepository interface {
+	AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool)
+	RemoveCart(userID int64, sku uint32) error
+	ClearCart(userID int64) error
+	GetCart(userID int64) ([]model.ItemCart, error)
+}
+
 type Cart struct {
 	mu    sync.RWMutex
-	carts map[int64]map[uint32]uint16
+	carts map[int64]map[uint32]uint16 // userID → (sku → quantity)
 }
 
 func New() *Cart {
@@ -16,47 +24,56 @@ func New() *Cart {
 	}
 }
 
-func (cs *Cart) AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
+func (c *Cart) AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if _, ok := cs.carts[userID]; !ok {
-		cs.carts[userID] = make(map[uint32]uint16)
+	if _, ok := c.carts[userID]; !ok {
+		c.carts[userID] = make(map[uint32]uint16)
 	}
 
-	_, existed = cs.carts[userID][sku]
-	cs.carts[userID][sku] += count
-	total = cs.carts[userID][sku]
+	_, existed = c.carts[userID][sku]
+	c.carts[userID][sku] += count
+	total = c.carts[userID][sku]
 
 	return total, existed
 }
 
-func (cs *Cart) RemoveCart(userID int64, sku uint32) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
+func (c *Cart) RemoveCart(userID int64, sku uint32) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	if _, ok := cs.carts[userID]; ok {
-		delete(cs.carts[userID], sku)
+	if _, ok := c.carts[userID]; !ok {
+		return errorx.ErrUserNotFound
 	}
+	delete(c.carts[userID], sku)
+	return nil
 }
 
-func (cs *Cart) ClearCart(userID int64) {
-	cs.mu.Lock()
-	defer cs.mu.Unlock()
+func (c *Cart) ClearCart(userID int64) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-	delete(cs.carts, userID)
+	if _, ok := c.carts[userID]; !ok {
+		return errorx.ErrUserNotFound
+	}
+	delete(c.carts, userID)
+	return nil
 }
 
-func (cs *Cart) GetCart(userID int64) (map[uint32]uint16, error) {
-	cs.mu.RLock()
-	defer cs.mu.RUnlock()
+func (c *Cart) GetCart(userID int64) ([]model.ItemCart, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
-	if cart, ok := cs.carts[userID]; ok {
-		result := make(map[uint32]uint16, len(cart))
-		for k, v := range cart {
-			result[k] = v
+	if cart, ok := c.carts[userID]; ok {
+		items := make([]model.ItemCart, 0, len(cart))
+		for sku, count := range cart {
+			items = append(items, model.ItemCart{
+				SkuID: sku,
+				Count: count,
+			})
 		}
-		return result, nil
+		return items, nil
 	}
-	return nil, errors.New("user not found")
+	return nil, errorx.ErrUserNotFound
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/go-playground/validator/v10"
 	"homework-1/internal/app/product"
-	"homework-1/internal/app/server"
+	"homework-1/internal/app/service"
 	"homework-1/internal/pkg/response"
 	"io"
 	"net/http"
@@ -13,11 +13,11 @@ import (
 )
 
 type Handler struct {
-	cartService    *server.Server
-	productService *product.ProductService
+	cartService    service.ServiceMethods
+	productService product.ProductValidator
 }
 
-func New(cartService *server.Server, productService *product.ProductService) *Handler {
+func New(cartService service.ServiceMethods, productService product.ProductValidator) *Handler {
 	return &Handler{
 		cartService:    cartService,
 		productService: productService,
@@ -36,7 +36,7 @@ func parseIDFromPath(r *http.Request, key string) (int64, error) {
 func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Type") != "application/json" {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Ожидается application/json")
+		fmt.Fprintln(w, "expected application/json")
 		return
 	}
 
@@ -53,6 +53,7 @@ func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := io.ReadAll(r.Body)
+	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -79,6 +80,7 @@ func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 	}
 
+	w.WriteHeader(http.StatusOK)
 	if !existed {
 		fmt.Fprintf(w, "must add %d item", total)
 	} else {
@@ -98,13 +100,12 @@ func (h *Handler) DeleteItemFromCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
-	_, err = h.productService.ValidateProduct(uint32(sku))
+	err = h.cartService.Remove(userId, uint32(sku))
 	if err != nil {
-		response.WriteError(w, http.StatusPreconditionFailed, "invalid sku")
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	h.cartService.Remove(userId, uint32(sku))
+	w.WriteHeader(http.StatusNoContent)
 	fmt.Fprint(w, "must delete item from cart")
 }
 
@@ -114,7 +115,12 @@ func (h *Handler) ClearCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	h.cartService.Clear(userId)
+	err = h.cartService.Clear(userId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 	fmt.Fprint(w, "must delete cart")
 }
 
@@ -129,5 +135,15 @@ func (h *Handler) GetCart(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusBadRequest, err.Error())
 	}
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(respon)
+}
+
+func (h *Handler) InitRoutes() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("DELETE /user/{user_id}/cart/{sku_id}", h.DeleteItemFromCart)
+	mux.HandleFunc("GET /user/{user_id}/cart", h.GetCart)
+
+	return mux
 }

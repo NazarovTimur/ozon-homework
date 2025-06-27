@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"github.com/joho/godotenv"
 	"homework-1/internal/app/product"
-	"homework-1/internal/app/server"
-	"homework-1/internal/config"
+	"homework-1/internal/app/service"
 	"homework-1/internal/http/handler"
 	"homework-1/internal/http/middleware"
+	"homework-1/internal/pkg/config"
 	"homework-1/internal/pkg/retry"
 	"homework-1/internal/repository"
 	"log"
@@ -23,13 +23,13 @@ func main() {
 	retryClient := retry.New(cfg.Retry.Count, cfg.Retry.Delay)
 	productService := product.NewProductService(retryClient, cfg.Product.Url, cfg.Product.Token)
 	rep := repository.New()
-	cartService := server.New(rep, productService)
-	handler := handler.New(cartService, productService)
+	cartService := service.New(rep, productService)
+	h := handler.New(cartService, productService)
 
-	http.HandleFunc("POST /user/{user_id}/cart/{sku_id}", handler.AddItemToCart)
-	http.HandleFunc("DELETE /user/{user_id}/cart/{sku_id}", handler.DeleteItemFromCart)
-	http.HandleFunc("DELETE /user/{user_id}/cart", handler.ClearCart)
-	http.HandleFunc("GET /user/{user_id}/cart", handler.GetCart)
+	http.HandleFunc("POST /user/{user_id}/cart/{sku_id}", h.AddItemToCart)
+	http.HandleFunc("DELETE /user/{user_id}/cart/{sku_id}", h.DeleteItemFromCart)
+	http.HandleFunc("DELETE /user/{user_id}/cart", h.ClearCart)
+	http.HandleFunc("GET /user/{user_id}/cart", h.GetCart)
 
 	loggedMux := middleware.LoggingMiddleware(http.DefaultServeMux)
 	fmt.Printf("Сервер запущен на http://localhost:%s\n", cfg.Server.Port)
