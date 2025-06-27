@@ -1,5 +1,9 @@
 package model
 
+type ItemCart struct {
+	SkuID uint32 `json:"sku_id"`
+	Count uint16 `json:"count"`
+}
 type CartItem struct {
 	SkuID int64  `json:"sku_id"`
 	Name  string `json:"name"`

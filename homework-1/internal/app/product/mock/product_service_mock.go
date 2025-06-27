@@ -5,7 +5,7 @@ package mock
 //go:generate minimock -i homework-1/internal/app/product.ProductValidator -o product_service_mock.go -n ProductValidatorMock -p mock
 
 import (
-	"homework-1/internal/repository"
+	"homework-1/internal/pkg/model"
 	"sync"
 	mm_atomic "sync/atomic"
 	mm_time "time"
@@ -18,13 +18,13 @@ type ProductValidatorMock struct {
 	t          minimock.Tester
 	finishOnce sync.Once
 
-	funcValidateProduct          func(sku uint32) (pp1 *repository.ProductResponse, err error)
+	funcValidateProduct          func(sku uint32) (pp1 *model.ProductResponse, err error)
 	funcValidateProductOrigin    string
 	inspectFuncValidateProduct   func(sku uint32)
 	afterValidateProductCounter  uint64
 	beforeValidateProductCounter uint64
 	ValidateProductMock          mProductValidatorMockValidateProduct
-	ValidateProductFunc          func(sku uint32) (*repository.ProductResponse, error)
+	ValidateProductFunc          func(sku uint32) (*model.ProductResponse, error)
 }
 
 // NewProductValidatorMock returns a mock for mm_product.ProductValidator
@@ -79,7 +79,7 @@ type ProductValidatorMockValidateProductParamPtrs struct {
 
 // ProductValidatorMockValidateProductResults contains results of the ProductValidator.ValidateProduct
 type ProductValidatorMockValidateProductResults struct {
-	pp1 *repository.ProductResponse
+	pp1 *model.ProductResponse
 	err error
 }
 
@@ -159,7 +159,7 @@ func (mmValidateProduct *mProductValidatorMockValidateProduct) Inspect(f func(sk
 }
 
 // Return sets up results that will be returned by ProductValidator.ValidateProduct
-func (mmValidateProduct *mProductValidatorMockValidateProduct) Return(pp1 *repository.ProductResponse, err error) *ProductValidatorMock {
+func (mmValidateProduct *mProductValidatorMockValidateProduct) Return(pp1 *model.ProductResponse, err error) *ProductValidatorMock {
 	if mmValidateProduct.mock.funcValidateProduct != nil {
 		mmValidateProduct.mock.t.Fatalf("ProductValidatorMock.ValidateProduct mock is already set by Set")
 	}
@@ -173,7 +173,7 @@ func (mmValidateProduct *mProductValidatorMockValidateProduct) Return(pp1 *repos
 }
 
 // Set uses given function f to mock the ProductValidator.ValidateProduct method
-func (mmValidateProduct *mProductValidatorMockValidateProduct) Set(f func(sku uint32) (pp1 *repository.ProductResponse, err error)) *ProductValidatorMock {
+func (mmValidateProduct *mProductValidatorMockValidateProduct) Set(f func(sku uint32) (pp1 *model.ProductResponse, err error)) *ProductValidatorMock {
 	if mmValidateProduct.defaultExpectation != nil {
 		mmValidateProduct.mock.t.Fatalf("Default expectation is already set for the ProductValidator.ValidateProduct method")
 	}
@@ -204,7 +204,7 @@ func (mmValidateProduct *mProductValidatorMockValidateProduct) When(sku uint32) 
 }
 
 // Then sets up ProductValidator.ValidateProduct return parameters for the expectation previously defined by the When method
-func (e *ProductValidatorMockValidateProductExpectation) Then(pp1 *repository.ProductResponse, err error) *ProductValidatorMock {
+func (e *ProductValidatorMockValidateProductExpectation) Then(pp1 *model.ProductResponse, err error) *ProductValidatorMock {
 	e.results = &ProductValidatorMockValidateProductResults{pp1, err}
 	return e.mock
 }
@@ -231,7 +231,7 @@ func (mmValidateProduct *mProductValidatorMockValidateProduct) invocationsDone()
 }
 
 // ValidateProduct implements mm_product.ProductValidator
-func (mmValidateProduct *ProductValidatorMock) ValidateProduct(sku uint32) (pp1 *repository.ProductResponse, err error) {
+func (mmValidateProduct *ProductValidatorMock) ValidateProduct(sku uint32) (pp1 *model.ProductResponse, err error) {
 	mm_atomic.AddUint64(&mmValidateProduct.beforeValidateProductCounter, 1)
 	defer mm_atomic.AddUint64(&mmValidateProduct.afterValidateProductCounter, 1)
 

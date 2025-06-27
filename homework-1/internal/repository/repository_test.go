@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"homework-1/internal/pkg/model"
 	"reflect"
 	"testing"
 )
@@ -129,19 +130,22 @@ func TestCart_GetCart(t *testing.T) {
 		name           string
 		cart           map[int64]map[uint32]uint16
 		UserID         int64
-		expectedResult map[uint32]uint16
+		expectedResult []model.ItemCart
 	}{
 		{
-			name:           "get cart",
-			cart:           map[int64]map[uint32]uint16{44: {21: 5}},
-			UserID:         44,
-			expectedResult: map[uint32]uint16{21: 5},
+			name:   "get cart",
+			cart:   map[int64]map[uint32]uint16{44: {21: 5}},
+			UserID: 44,
+			expectedResult: []model.ItemCart{{
+				SkuID: 21,
+				Count: 5,
+			}},
 		},
 		{
 			name:           "get 0",
 			cart:           map[int64]map[uint32]uint16{42: {12: 52}},
 			UserID:         44,
-			expectedResult: map[uint32]uint16{},
+			expectedResult: nil,
 		},
 	}
 

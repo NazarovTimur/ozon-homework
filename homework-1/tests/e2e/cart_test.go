@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/gojuno/minimock/v3"
 	"homework-1/internal/app/product/mock"
-	"homework-1/internal/app/server"
+	"homework-1/internal/app/service"
 	"homework-1/internal/http/handler"
 	"homework-1/internal/pkg/model"
 	"homework-1/internal/repository"
@@ -17,10 +17,10 @@ import (
 func TestDeleteItemE2E(t *testing.T) {
 	ctrl := minimock.NewController(t)
 	mockProduct := mock.NewProductValidatorMock(ctrl)
-	mockProduct.ValidateProductMock.Expect(52).Return(&repository.ProductResponse{Name: "TestProduct", Price: 100}, nil)
+	mockProduct.ValidateProductMock.Expect(52).Return(&model.ProductResponse{Name: "TestProduct", Price: 100}, nil)
 	repo := repository.New()
 	repo.AddCart(144, 52, 6)
-	cartService := server.New(repo, mockProduct)
+	cartService := service.New(repo, mockProduct)
 	handler := handler.New(cartService, mockProduct)
 
 	router := handler.InitRoutes()
@@ -42,7 +42,7 @@ func TestDeleteItemE2E(t *testing.T) {
 		t.Errorf("want status 200; got %v", resp.StatusCode)
 	}
 	cart, _ := repo.GetCart(144)
-	if _, exists := cart[52]; exists {
+	if !(cart[0].SkuID == 52 && cart[0].Count == 0) {
 		t.Errorf("item not deleted from cart")
 	}
 }
@@ -50,10 +50,10 @@ func TestDeleteItemE2E(t *testing.T) {
 func TestGetCartE2E(t *testing.T) {
 	ctrl := minimock.NewController(t)
 	mockProduct := mock.NewProductValidatorMock(ctrl)
-	mockProduct.ValidateProductMock.Expect(52).Return(&repository.ProductResponse{Name: "TestProduct", Price: 100}, nil)
+	mockProduct.ValidateProductMock.Expect(52).Return(&model.ProductResponse{Name: "TestProduct", Price: 100}, nil)
 	repo := repository.New()
 	repo.AddCart(144, 52, 6)
-	cartService := server.New(repo, mockProduct)
+	cartService := service.New(repo, mockProduct)
 	handler := handler.New(cartService, mockProduct)
 
 	router := handler.InitRoutes()

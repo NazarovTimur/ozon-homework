@@ -4,14 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"homework-1/internal/pkg/model"
 	"homework-1/internal/pkg/retry"
-	"homework-1/internal/repository"
 	"io"
 	"net/http"
 )
 
 type ProductValidator interface {
-	ValidateProduct(sku uint32) (*repository.ProductResponse, error)
+	ValidateProduct(sku uint32) (*model.ProductResponse, error)
 }
 
 type ProductService struct {
@@ -28,8 +28,8 @@ func NewProductService(client *retry.RetryClient, url, token string) *ProductSer
 	}
 }
 
-func (ps *ProductService) ValidateProduct(sku uint32) (*repository.ProductResponse, error) {
-	request := repository.ProductRequest{
+func (ps *ProductService) ValidateProduct(sku uint32) (*model.ProductResponse, error) {
+	request := model.ProductRequest{
 		Token:      ps.token,
 		SkuProduct: sku,
 	}
@@ -40,7 +40,7 @@ func (ps *ProductService) ValidateProduct(sku uint32) (*repository.ProductRespon
 	}
 
 	urlRequest := ps.url + "/get_product"
-	req, err := http.NewRequest("POST", urlRequest, bytes.NewBuffer(jsonRequest))
+	req, err := http.NewRequest(http.MethodPost, urlRequest, bytes.NewBuffer(jsonRequest))
 	if err != nil {
 		return nil, fmt.Errorf("Error creating request: %v", err)
 	}
@@ -57,7 +57,7 @@ func (ps *ProductService) ValidateProduct(sku uint32) (*repository.ProductRespon
 		return nil, fmt.Errorf("Error %d: %s", resp.StatusCode, string(body))
 	}
 
-	var product repository.ProductResponse
+	var product model.ProductResponse
 	if err = json.NewDecoder(resp.Body).Decode(&product); err != nil {
 		return nil, fmt.Errorf("Incorrect response: %v", err)
 	}
