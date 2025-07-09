@@ -1,16 +1,17 @@
-package repository
+package cart
 
 import (
+	"context"
 	"homework-1/internal/pkg/errorx"
 	"homework-1/internal/pkg/model"
 	"sync"
 )
 
 type CartRepository interface {
-	AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool)
-	RemoveCart(userID int64, sku uint32) error
-	ClearCart(userID int64) error
-	GetCart(userID int64) ([]model.ItemCart, error)
+	AddCart(ctx context.Context, userID int64, sku uint32, count uint16) (total uint16, existed bool, err error)
+	RemoveCart(ctx context.Context, userID int64, sku uint32) error
+	ClearCart(ctx context.Context, userID int64) error
+	GetCart(ctx context.Context, userID int64) ([]model.ItemCart, error)
 }
 
 type Cart struct {
@@ -24,7 +25,11 @@ func New() *Cart {
 	}
 }
 
-func (c *Cart) AddCart(userID int64, sku uint32, count uint16) (total uint16, existed bool) {
+func (c *Cart) AddCart(ctx context.Context, userID int64, sku uint32, count uint16) (total uint16, existed bool, err error) {
+	if err = ctx.Err(); err != nil {
+		return 0, false, errorx.ErrContextCanceled
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -36,10 +41,14 @@ func (c *Cart) AddCart(userID int64, sku uint32, count uint16) (total uint16, ex
 	c.carts[userID][sku] += count
 	total = c.carts[userID][sku]
 
-	return total, existed
+	return total, existed, nil
 }
 
-func (c *Cart) RemoveCart(userID int64, sku uint32) error {
+func (c *Cart) RemoveCart(ctx context.Context, userID int64, sku uint32) error {
+	if err := ctx.Err(); err != nil {
+		return errorx.ErrContextCanceled
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -50,7 +59,11 @@ func (c *Cart) RemoveCart(userID int64, sku uint32) error {
 	return nil
 }
 
-func (c *Cart) ClearCart(userID int64) error {
+func (c *Cart) ClearCart(ctx context.Context, userID int64) error {
+	if err := ctx.Err(); err != nil {
+		return errorx.ErrContextCanceled
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -61,7 +74,11 @@ func (c *Cart) ClearCart(userID int64) error {
 	return nil
 }
 
-func (c *Cart) GetCart(userID int64) ([]model.ItemCart, error) {
+func (c *Cart) GetCart(ctx context.Context, userID int64) ([]model.ItemCart, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errorx.ErrContextCanceled
+	}
+
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 

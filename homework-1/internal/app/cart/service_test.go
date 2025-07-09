@@ -1,10 +1,13 @@
-package service
+package cart
 
 import (
+	"context"
 	"github.com/gojuno/minimock/v3"
+	mockLoms "homework-1/internal/app/loms/mock"
 	"homework-1/internal/app/product/mock"
 	"homework-1/internal/pkg/model"
-	mock2 "homework-1/internal/repository/mock"
+	pb "homework-1/internal/proto/loms"
+	mock2 "homework-1/internal/repository/cart/mock"
 	"reflect"
 	"testing"
 )
@@ -13,9 +16,11 @@ func TestServer_Add(t *testing.T) {
 	ctrl := minimock.NewController(t)
 	mockRepo := mock2.NewCartRepositoryMock(ctrl)
 	mockService := mock.NewProductValidatorMock(ctrl)
+	mockLomsService := mockLoms.NewLomsServiceClientMock(ctrl)
 
-	serverCart := New(mockRepo, mockService)
+	serverCart := New(mockRepo, mockService, mockLomsService)
 
+	ctx := context.Background()
 	userID := int64(25)
 	skuID := uint32(10)
 	count := uint16(10)
@@ -23,12 +28,15 @@ func TestServer_Add(t *testing.T) {
 		Name:  "Timi",
 		Price: uint32(10),
 	}
+	requestLoms := pb.StocksInfoRequest{Sku: skuID}
+	responseLoms := pb.StocksInfoResponse{Count: uint64(count)}
 
 	mockService.ValidateProductMock.Expect(skuID).Return(&responseProduct, nil)
-	mockRepo.AddCartMock.Expect(userID, skuID, count).Return(10, false)
+	mockLomsService.StocksInfoMock.Expect(ctx, &requestLoms).Return(&responseLoms, nil)
+	mockRepo.AddCartMock.Expect(ctx, userID, skuID, count).Return(10, false, nil)
 
-	total, existed := serverCart.Add(userID, skuID, count)
-	if total != 10 || existed {
+	total, existed, err := serverCart.Add(ctx, userID, skuID, count)
+	if total != 10 || existed || err != nil {
 		t.Errorf("Total %d, existed %v", total, existed)
 	}
 }
@@ -38,14 +46,16 @@ func TestServer_Remove(t *testing.T) {
 	defer ctrl.Finish()
 	mockRepo := mock2.NewCartRepositoryMock(ctrl)
 	mockService := mock.NewProductValidatorMock(ctrl)
+	mockLomsService := mockLoms.NewLomsServiceClientMock(ctrl)
 
-	serverCart := New(mockRepo, mockService)
+	serverCart := New(mockRepo, mockService, mockLomsService)
 	userID := int64(25)
 	skuID := uint32(10)
+	ctx := context.Background()
 
-	mockRepo.RemoveCartMock.Expect(userID, skuID).Return(nil)
+	mockRepo.RemoveCartMock.Expect(ctx, userID, skuID).Return(nil)
 
-	serverCart.Remove(userID, skuID)
+	serverCart.Remove(ctx, userID, skuID)
 }
 
 func TestServer_Clear(t *testing.T) {
@@ -53,20 +63,24 @@ func TestServer_Clear(t *testing.T) {
 	defer ctrl.Finish()
 	mockRepo := mock2.NewCartRepositoryMock(ctrl)
 	mockService := mock.NewProductValidatorMock(ctrl)
+	mockLomsService := mockLoms.NewLomsServiceClientMock(ctrl)
+	ctx := context.Background()
 
-	serverCart := New(mockRepo, mockService)
+	serverCart := New(mockRepo, mockService, mockLomsService)
 	userID := int64(25)
 
-	mockRepo.ClearCartMock.Expect(userID).Return(nil)
-	serverCart.Clear(userID)
+	mockRepo.ClearCartMock.Expect(ctx, userID).Return(nil)
+	serverCart.Clear(ctx, userID)
 }
 
 func TestServer_Get(t *testing.T) {
 	ctrl := minimock.NewController(t)
 	mockRepo := mock2.NewCartRepositoryMock(ctrl)
 	mockService := mock.NewProductValidatorMock(ctrl)
+	mockLomsService := mockLoms.NewLomsServiceClientMock(ctrl)
+	ctx := context.Background()
 
-	serverCart := New(mockRepo, mockService)
+	serverCart := New(mockRepo, mockService, mockLomsService)
 	userID := int64(25)
 	responseProduct := model.ProductResponse{
 		Name:  "Timi",
@@ -83,9 +97,9 @@ func TestServer_Get(t *testing.T) {
 		TotalPrice: 10,
 	}
 	mockService.ValidateProductMock.Expect(uint32(10)).Return(&responseProduct, nil)
-	mockRepo.GetCartMock.Expect(userID).Return([]model.ItemCart{{SkuID: 10, Count: 1}}, nil)
+	mockRepo.GetCartMock.Expect(ctx, userID).Return([]model.ItemCart{{SkuID: 10, Count: 1}}, nil)
 
-	answer, err := serverCart.Get(userID)
+	answer, err := serverCart.Get(ctx, userID)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
