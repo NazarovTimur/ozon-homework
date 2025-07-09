@@ -2,10 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/go-playground/validator/v10"
+	"homework-1/internal/app/cart"
 	"homework-1/internal/app/product"
-	"homework-1/internal/app/service"
+	"homework-1/internal/pkg/errorx"
 	"homework-1/internal/pkg/response"
 	"io"
 	"net/http"
@@ -13,11 +15,11 @@ import (
 )
 
 type Handler struct {
-	cartService    service.ServiceMethods
+	cartService    cart.ServiceMethods
 	productService product.ProductValidator
 }
 
-func New(cartService service.ServiceMethods, productService product.ProductValidator) *Handler {
+func New(cartService cart.ServiceMethods, productService product.ProductValidator) *Handler {
 	return &Handler{
 		cartService:    cartService,
 		productService: productService,
@@ -75,9 +77,14 @@ func (h *Handler) AddItemToCart(w http.ResponseWriter, r *http.Request) {
 		response.WriteError(w, http.StatusPreconditionFailed, "invalid sku")
 		return
 	}
-	total, existed := h.cartService.Add(userId, uint32(sku), createRequest.Count)
-	if total == 0 {
+	total, existed, err := h.cartService.Add(r.Context(), userId, uint32(sku), createRequest.Count)
+	if errors.Is(err, errorx.ErrInsufficientStock) {
+		response.WriteError(w, http.StatusPreconditionFailed, "insufficient stock")
+		return
+	}
+	if total == 0 || err != nil {
 		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -100,7 +107,7 @@ func (h *Handler) DeleteItemFromCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = h.cartService.Remove(userId, uint32(sku))
+	err = h.cartService.Remove(r.Context(), userId, uint32(sku))
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -115,7 +122,7 @@ func (h *Handler) ClearCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	err = h.cartService.Clear(userId)
+	err = h.cartService.Clear(r.Context(), userId)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -130,9 +137,26 @@ func (h *Handler) GetCart(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	respon, err := h.cartService.Get(userId)
+	respon, err := h.cartService.Get(r.Context(), userId)
 	if err != nil {
-		response.WriteError(w, http.StatusBadRequest, err.Error())
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(respon)
+}
+
+func (h *Handler) CheckoutAll(w http.ResponseWriter, r *http.Request) {
+	userId, err := parseIDFromPath(r, "user_id")
+	if err != nil || userId < 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	respon, err := h.cartService.Checkout(r.Context(), userId)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)

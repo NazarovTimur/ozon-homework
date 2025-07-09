@@ -1,4 +1,4 @@
-package repository
+package cart
 
 import (
 	"homework-1/internal/pkg/model"
