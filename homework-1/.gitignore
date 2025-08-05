@@ -1,2 +1,5 @@
 vendor-proto/
-/tests/
+/loms/bin/
+/postgres_data/
+/api/
+/test-postgres_data/
