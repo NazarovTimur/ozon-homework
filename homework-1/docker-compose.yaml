@@ -1,0 +1,55 @@
+services:
+  master:
+    image: postgres:16
+    container_name: master
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: masterpass
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data/master:/var/lib/postgresql/data
+      - ./loms/internal/repository/db/db-conf/master/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
+    command: postgres
+    networks:
+      - pgnet
+
+  replica:
+    image: postgres:16
+    container_name: replica
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: replicapass
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./postgres_data/replica:/var/lib/postgresql/data
+      - ./loms/internal/repository/db/db-conf/replica/postgresql.conf:/etc/postgresql/postgresql.conf
+    depends_on:
+      - master
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - pgnet
+
+  testdb:
+    image: postgres:16
+    container_name: testdb
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: loms_test
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./postgres_data/testdb:/var/lib/postgresql/data
+    networks:
+      - pgnet
+
+
+networks:
+  pgnet:
+    driver: bridge

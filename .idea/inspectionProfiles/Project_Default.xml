@@ -19,6 +19,7 @@
         <function importPath="fmt" name="Fprintln" />
         <function importPath="fmt" name="Fprint" />
         <function importPath="net/http" name="ListenAndServe" />
+        <function importPath="fmt" name="Fprintf" />
       </functions>
       <methods>
         <method importPath="bytes" receiver="*Buffer" name="WriteRune" />
@@ -33,6 +34,7 @@
         <method importPath="strings" receiver="*Builder" name="WriteByte" />
         <method importPath="io" receiver="ReadCloser" name="Close" />
         <method importPath="google.golang.org/grpc" receiver="*ClientConn" name="Close" />
+        <method importPath="github.com/jackc/pgx/v5" receiver="*Conn" name="Close" />
       </methods>
     </inspection_tool>
   </profile>

@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
 # Пути и утилиты
-BIN_DIR := bin
+BIN_DIR := loms/bin
 RES_DIR := result
 MKDIR := mkdir -p $(BIN_DIR)
 RM := rm -f
@@ -29,13 +29,14 @@ GOCOGNIT := $(TOOLS_DIR)/gocognit
 SWAGGER_FILE ?= $(OUT_DIR)/apidocs.swagger.json
 SWAGGER_PORT ?= 8081
 
-OUT_DIR := internal/proto/loms
-PROTO_DIR := internal/proto
+OUT_DIR := api/proto/loms
+PROTO_DIR := api/proto
 
 .PHONY: run-all test-coverage install-tools cyclo cognit report clean proto-deps vendor-proto generate-proto check-proto-files link-tools generate-swagger serve-swagger
 
 run-all:
-	go run ./cmd/cart/main.go
+	go run ./cart/cmd/main.go
+	go run ./loms/cmd/main.go
 
 test-coverage:
 	go test ./... -coverprofile=coverage.out
@@ -220,3 +221,46 @@ generate-proto: vendor-proto proto-deps check-proto-files
 serve-swagger: $(SWAGGER_CLI)
 	@$(SWAGGER_CLI) serve --no-open --flavor=swagger --port=$(SWAGGER_PORT) $(SWAGGER_FILE)
 
+.PHONY: install-goose
+
+install-goose:
+	@echo "Installing binary dependencies..."
+	@GOBIN=$(abspath $(BIN_DIR)) go install github.com/pressly/goose/v3/cmd/goose@v3.22.1
+
+.PHONY: apply-migrations
+apply-migrations: install-goose
+	@echo "Applying migrations..."
+	@$(BIN_DIR)/goose -dir loms/internal/repository/db/migrations postgres "postgres://postgres:masterpass@localhost:5432/appdb?sslmode=disable" up
+
+.PHONY: rollback-migrations
+rollback-migrations: install-goose
+	@echo "Rolling back ALL migrations..."
+	@$(BIN_DIR)/goose -dir loms/repository/db/migrations postgres "postgres://postgres:masterpass@master:5432/appdb?sslmode=disable" reset
+
+.PHONY: db-up db-down
+db-up:
+	docker-compose up -d
+
+db-down:
+	docker-compose down
+
+.PHONY: test-repository testdb-up testdb-down test-order test-stock
+
+testdb-up:
+	docker-compose up -d --wait testdb
+
+testdb-down:
+	docker-compose stop testdb
+	docker-compose rm -f testdb
+
+test-order:
+	go test ./loms/internal/repository/order -v -count=1
+
+test-stock:
+	go test ./loms/internal/repository/stock -v -count=1
+
+test-repository: testdb-up test-order test-stock testdb-down
+
+.PHONY: test-race
+test-race:
+	go test ./cart/internal/repository -race -v
