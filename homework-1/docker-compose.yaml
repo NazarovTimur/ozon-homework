@@ -2,7 +2,7 @@ services:
   master:
     image: postgres:16
     container_name: master
-    restart: always
+    user: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: masterpass
@@ -11,8 +11,9 @@ services:
       - "5432:5432"
     volumes:
       - ./postgres_data/master:/var/lib/postgresql/data
-      - ./loms/internal/repository/db/db-conf/master/postgresql.conf:/var/lib/postgresql/data/postgresql.conf
-    command: postgres
+      - ./loms/internal/repository/db/db-conf/master/postgresql.conf:/etc/postgresql/postgresql.conf
+      - ./loms/internal/repository/db/db-conf/master/pg_hba.conf:/etc/postgresql/pg_hba.conf
+    command: bash -c "initdb -D /var/lib/postgresql/data || true; cp /etc/postgresql/*.conf /var/lib/postgresql/data/; exec postgres -D /var/lib/postgresql/data -c config_file=/etc/postgresql/postgresql.conf"
     networks:
       - pgnet
 

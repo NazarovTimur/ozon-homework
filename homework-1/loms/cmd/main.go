@@ -22,6 +22,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	run "runtime"
 	"syscall"
 	"time"
 )
@@ -29,11 +31,16 @@ import (
 func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	if err := godotenv.Load(".env.loms"); err != nil {
+
+	_, filename, _, _ := run.Caller(0)
+	root := filepath.Join(filepath.Dir(filename), "../../")
+	envPath := filepath.Join(root, ".env.loms")
+
+	if err := godotenv.Load(envPath); err != nil {
 		log.Println("No .env.loms file found or failed to load")
 	}
 	cfg := config.NewConfig()
-	fmt.Println("Master DSN:", cfg.Database.MasterDSN)
+
 	dbConnMaster, err := pgx.Connect(context.Background(), cfg.Database.MasterDSN)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)

@@ -1,6 +1,8 @@
 package config
 
-import "os"
+import (
+	"os"
+)
 
 const (
 	EnvPort            = "PORT"
@@ -31,14 +33,14 @@ type DatabaseConfig struct {
 func NewConfig() *Config {
 	return &Config{
 		Server: ServerConfig{
-			Port: getEnv("PORT", EnvPort),
+			Port: getEnv(EnvPort, "PORT"),
 		},
 		Grpc: GrpcConfig{
-			Port: getEnv("GRPC_PORT", GrpcPort),
+			Port: getEnv(GrpcPort, "GRPC_PORT"),
 		},
 		Database: DatabaseConfig{
-			MasterDSN:  getEnv(DatabaseMasterDSN, "postgres://postgres:masterpass@master:5432/appdb?sslmode=disable"),
-			ReplicaDSN: getEnv(DatabaseReplicaDSN, "postgres://postgres:replicapass@replica:5432/appdb?sslmode=disable"),
+			MasterDSN:  getEnv(DatabaseMasterDSN, "postgres://postgres:masterpass@localhost:5432/appdb?sslmode=disable"),
+			ReplicaDSN: getEnv(DatabaseReplicaDSN, "postgres://postgres:replicapass@localhost:5432/appdb?sslmode=disable"),
 		},
 	}
 }
